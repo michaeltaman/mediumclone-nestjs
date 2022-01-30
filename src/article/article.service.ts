@@ -54,8 +54,8 @@ export class ArticleService {
       const ids = articles.favorites.map((el) => el.id);
 
       if (ids.length > 0) {
-        console.log('ids', ids);
-        console.log('author', articles);
+        //console.log('ids', ids);
+        //console.log('author', articles);
         queryBuilder.andWhere('articles.id IN (:...ids)', {
           ids,
         });
@@ -72,10 +72,28 @@ export class ArticleService {
       queryBuilder.offset(query.offset);
     }
 
+    let favoriteIds: number[] = [];
+    if (currentUserId) {
+      const currentUserFavoriteArticles = await this.userRepository.findOne(
+        { id: currentUserId },
+        { relations: ['favorites'] },
+      );
+
+      favoriteIds = currentUserFavoriteArticles.favorites.map(
+        (favorite) => favorite.id,
+      );
+    }
+
+    // Adds favorited = false/true for every article of current user
+    // Does current user favorited an article ?
     const articles = await queryBuilder.getMany();
+    const articlesWithFavorited = articles.map((article) => {
+      const favorited: boolean = favoriteIds.includes(article.id);
+      return { ...article, favorited };
+    });
     const articlesCount = await queryBuilder.getCount();
 
-    return { articles, articlesCount };
+    return { articles: articlesWithFavorited, articlesCount };
   }
 
   async createArticle(
